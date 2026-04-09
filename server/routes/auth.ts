@@ -1,7 +1,7 @@
 import express from 'express';
 import bcrypt from 'bcrypt';
-import { userDb } from '../database/db.ts';
-import { generateToken, authenticateToken } from '../middleware/auth.ts';
+import { userDb } from '../database/db.js';
+import { generateToken, authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -11,7 +11,8 @@ router.get('/status', async (req, res) => {
     const hasUsers = await userDb.hasUsers();
     res.json({ 
       needsSetup: !hasUsers,
-      isAuthenticated: false // Will be overridden by frontend if token exists
+      isAuthenticated: false, // Will be overridden by frontend if token exists
+      isDevMode: process.env.NODE_ENV === 'development'
     });
   } catch (error) {
     console.error('Auth status error:', error);

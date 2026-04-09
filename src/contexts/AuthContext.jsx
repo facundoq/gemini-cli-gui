@@ -41,6 +41,13 @@ export const AuthProvider = ({ children }) => {
       const statusResponse = await api.auth.status();
       const statusData = await statusResponse.json();
       
+      if (statusData.isDevMode) {
+        setUser({ id: 0, username: 'dev-user' });
+        setNeedsSetup(false);
+        setIsLoading(false);
+        return;
+      }
+      
       if (statusData.needsSetup) {
         setNeedsSetup(true);
         setIsLoading(false);

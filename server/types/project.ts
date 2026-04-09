@@ -1,3 +1,5 @@
+import { Session } from './session.ts';
+
 export interface Project {
   name: string;
   path: string;
@@ -5,7 +7,7 @@ export interface Project {
   fullPath: string;
   isCustomName: boolean;
   isManuallyAdded?: boolean;
-  sessions: any[]; // To be typed in session.ts
+  sessions: Session[];
   sessionMeta?: {
     hasMore: boolean;
     total: number;

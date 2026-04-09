@@ -17,6 +17,7 @@ import FileTree from './FileTree';
 import CodeEditor from './CodeEditor';
 import Shell from './Shell';
 import GitPanel from './GitPanel';
+import { availableModels, approvalModes } from './ToolsSettings/index.jsx';
 
 function MainContent({ 
   selectedProject, 
@@ -42,6 +43,45 @@ function MainContent({
   autoScrollToBottom      // Auto-scroll to bottom when new messages arrive
 }) {
   const [editingFile, setEditingFile] = useState(null);
+  
+  // Chat settings lift-up
+  const [chatModel, setChatModel] = useState('auto');
+  const [chatApprovalMode, setChatApprovalMode] = useState('default');
+
+  useEffect(() => {
+    if (activeTab === 'chat' && selectedSession) {
+      try {
+        const sessionSettings = JSON.parse(localStorage.getItem(`chat-settings-${selectedSession.id}`) || '{}');
+        const globalSettings = JSON.parse(localStorage.getItem('gemini-tools-settings') || '{}');
+        
+        setChatModel(sessionSettings.selectedModel || globalSettings.selectedModel || 'auto');
+        setChatApprovalMode(sessionSettings.approvalMode || globalSettings.approvalMode || 'default');
+      } catch (e) {
+        setChatModel('auto');
+        setChatApprovalMode('default');
+      }
+    }
+  }, [selectedSession, activeTab]);
+
+  const handleModelChange = (model) => {
+    setChatModel(model);
+    if (selectedSession) {
+      try {
+        const saved = JSON.parse(localStorage.getItem(`chat-settings-${selectedSession.id}`) || '{}');
+        localStorage.setItem(`chat-settings-${selectedSession.id}`, JSON.stringify({ ...saved, selectedModel: model }));
+      } catch (e) {}
+    }
+  };
+
+  const handleApprovalModeChange = (mode) => {
+    setChatApprovalMode(mode);
+    if (selectedSession) {
+      try {
+        const saved = JSON.parse(localStorage.getItem(`chat-settings-${selectedSession.id}`) || '{}');
+        localStorage.setItem(`chat-settings-${selectedSession.id}`, JSON.stringify({ ...saved, approvalMode: mode }));
+      } catch (e) {}
+    }
+  };
 
   const handleFileOpen = (filePath, diffInfo = null) => {
     // Create a file object that CodeEditor expects
@@ -151,14 +191,45 @@ function MainContent({
                 </svg>
               </button>
             )}
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               {activeTab === 'chat' && selectedSession ? (
-                <div>
-                  <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white truncate">
-                    {selectedSession.summary}
-                  </h2>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                    {selectedProject.displayName} <span className="hidden sm:inline">• {selectedSession.id}</span>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white truncate">
+                      {selectedSession.summary}
+                    </h2>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                      {selectedProject.displayName} <span className="hidden sm:inline">• {selectedSession.id}</span>
+                    </div>
+                  </div>
+                  
+                  {/* Per-chat Settings Selectors */}
+                  <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                    <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-gray-700/50 px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-600">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight hidden lg:inline">Model</span>
+                      <select
+                        value={chatModel}
+                        onChange={(e) => handleModelChange(e.target.value)}
+                        className="bg-transparent border-none text-xs font-medium text-gray-700 dark:text-gray-200 focus:ring-0 cursor-pointer outline-none min-w-[100px]"
+                      >
+                        {availableModels.map(m => (
+                          <option key={m.value} value={m.value}>{m.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-gray-700/50 px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-600">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight hidden lg:inline">Mode</span>
+                      <select
+                        value={chatApprovalMode}
+                        onChange={(e) => handleApprovalModeChange(e.target.value)}
+                        className="bg-transparent border-none text-xs font-medium text-gray-700 dark:text-gray-200 focus:ring-0 cursor-pointer outline-none min-w-[100px]"
+                      >
+                        {approvalModes.map(m => (
+                          <option key={m.value} value={m.value}>{m.label}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 </div>
               ) : activeTab === 'chat' && !selectedSession ? (
@@ -285,6 +356,10 @@ function MainContent({
             autoExpandTools={autoExpandTools}
             showRawParameters={showRawParameters}
             autoScrollToBottom={autoScrollToBottom}
+            selectedModel={chatModel}
+            setSelectedModel={handleModelChange}
+            approvalMode={chatApprovalMode}
+            setApprovalMode={handleApprovalModeChange}
           />
         </div>
         <div className={`h-full overflow-hidden ${activeTab === 'files' ? 'block' : 'hidden'}`} data-panel="files">

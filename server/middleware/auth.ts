@@ -23,6 +23,12 @@ const authenticateToken = async (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
+  // In development mode, we allow access without a token and provide a mock user
+  if (!token && process.env.NODE_ENV === 'development') {
+    req.user = { id: 0, username: 'dev-user' };
+    return next();
+  }
+
   if (!token) {
     return res.status(401).json({ error: 'Access denied. No token provided.' });
   }
@@ -33,12 +39,20 @@ const authenticateToken = async (req, res, next) => {
     // Verify user still exists and is active
     const user = userDb.getUserById(decoded.userId);
     if (!user) {
+      if (process.env.NODE_ENV === 'development') {
+        req.user = { id: 0, username: 'dev-user' };
+        return next();
+      }
       return res.status(401).json({ error: 'Invalid token. User not found.' });
     }
     
     req.user = user;
     next();
   } catch (error) {
+    if (process.env.NODE_ENV === 'development') {
+      req.user = { id: 0, username: 'dev-user' };
+      return next();
+    }
     console.error('Token verification error:', error);
     return res.status(403).json({ error: 'Invalid token' });
   }
@@ -59,6 +73,9 @@ const generateToken = (user) => {
 // WebSocket authentication function
 const authenticateWebSocket = (token) => {
   if (!token) {
+    if (process.env.NODE_ENV === 'development') {
+      return { id: 0, username: 'dev-user' };
+    }
     return null;
   }
   
@@ -66,6 +83,9 @@ const authenticateWebSocket = (token) => {
     const decoded = jwt.verify(token, JWT_SECRET);
     return decoded;
   } catch (error) {
+    if (process.env.NODE_ENV === 'development') {
+      return { id: 0, username: 'dev-user' };
+    }
     console.error('WebSocket token verification error:', error);
     return null;
   }
